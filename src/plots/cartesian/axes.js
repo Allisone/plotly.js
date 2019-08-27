@@ -1637,8 +1637,16 @@ axes.draw = function(gd, arg, opts) {
  * @param {object} opts
  * - @param {boolean} skipTitle (set to true to skip axis title draw call)
  *
- * Fills in:
+ * Depends on:
+ * - ax._mainSubplot (from linkSubplots)
+ * - ax._mainAxis
+ * - ax._anchorAxis
+ * - ax._subplotsWith
+ * - ax._mainLinePosition (from lsInner)
+ * - ax._mainMirrorPosition
+ * - ax._linepositions
  *
+ * Fills in:
  * - ax._vals:
  * - ax._gridVals:
  * - ax._boundingBox:
@@ -1646,6 +1654,7 @@ axes.draw = function(gd, arg, opts) {
  * - ax._selections:
  * - ax._tickAngles:
  * - ax._labelLength:
+ * - and calls ax.setScale
  */
 axes.drawOne = function(gd, ax, opts) {
     opts = opts || {};
