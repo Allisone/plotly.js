@@ -18,6 +18,10 @@ function isVisible(ax) {
 }
 exports.isVisible = isVisible;
 
+// TODO get rid of this
+// - put things that affect draw and/or margins in defaults
+// - put things that just affect margins in autoMarginOpts
+// - move method to draw.js
 exports.makeData = function(fullLayout) {
     var axes = axisIDs.list({ _fullLayout: fullLayout }, 'x', true);
     var margin = fullLayout.margin;
