@@ -448,7 +448,19 @@ module.exports = function setConvert(ax, fullLayout) {
         }
     };
 
-    // set scaling to pixels
+    // Set scaling to pixels
+    //
+    // depends on:
+    //  - fullLayout._size i.e. the (auto) margins dimensions
+    //  - ax.overlaying
+    //  - ax.domain
+    //  - ax.calendar (for date axes)
+    //
+    // fills in:
+    //  - _offset
+    //  - _length
+    //  - _m
+    //  - _b
     ax.setScale = function(usePrivateRange) {
         var gs = fullLayout._size;
 
@@ -459,7 +471,7 @@ module.exports = function setConvert(ax, fullLayout) {
             ax.domain = ax2.domain;
         }
 
-        // While transitions are occuring, occurring, we get a double-transform
+        // While transitions are occurring, we get a double-transform
         // issue if we transform the drawn layer *and* use the new axis range to
         // draw the data. This allows us to construct setConvert using the pre-
         // interaction values of the range:
