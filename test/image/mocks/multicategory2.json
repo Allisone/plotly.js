@@ -28,7 +28,8 @@
       "title": "MULTI-CATEGORY ON TOP",
       "side": "top",
       "automargin": true,
-      "tickson": "labels"
+      "tickson": "labels",
+      "ticks": "outside"
     },
     "showlegend": false,
     "width": 400,
