@@ -1642,6 +1642,7 @@ axes.draw = function(gd, arg, opts) {
  * - ax._mainAxis
  * - ax._anchorAxis
  * - ax._subplotsWith
+ * - ax._counterDomainMin, ax._counterDomainMax (optionally, from linkSubplots)
  * - ax._mainLinePosition (from lsInner)
  * - ax._mainMirrorPosition
  * - ax._linepositions
@@ -1650,7 +1651,6 @@ axes.draw = function(gd, arg, opts) {
  * - ax._vals:
  * - ax._gridVals:
  * - ax._boundingBox:
- * - ax._counterSpan:
  * - ax._selections:
  * - ax._tickAngles:
  * - ax._labelLength:
@@ -1849,11 +1849,6 @@ axes.drawOne = function(gd, ax, opts) {
         });
     }
 
-    function extendRange(range, newRange) {
-        range[0] = Math.min(range[0], newRange[0]);
-        range[1] = Math.max(range[1], newRange[1]);
-    }
-
     function calcBoundingBox() {
         var bbox = ax._boundingBox = {};
         var llbbox = ax._selections[axId + 'tick'].size() ? getLabelLevelBbox(ax, axId + 'tick') : false;
@@ -1926,35 +1921,6 @@ axes.drawOne = function(gd, ax, opts) {
         // console.log('right', boundingBox.right, bbox.right)
         // console.log('height', boundingBox.height, bbox.height)
         // console.log('width', boundingBox.width, bbox.width)
-
-        // TODO move to lsInner
-        //      or initInteractions (aka graph_interact.js)
-        //
-        /*
-         * for spikelines: what's the full domain of positions in the
-         * opposite direction that are associated with this axis?
-         * This means any axes that we make a subplot with, plus the
-         * position of the axis itself if it's free.
-         */
-        if(subplotsWithAx) {
-            var fullRange = ax._counterSpan = [Infinity, -Infinity];
-
-            for(var i = 0; i < subplotsWithAx.length; i++) {
-                var plotinfo = fullLayout._plots[subplotsWithAx[i]];
-                var counterAxis = plotinfo[(axLetter === 'x') ? 'yaxis' : 'xaxis'];
-
-                extendRange(fullRange, [
-                    counterAxis._offset,
-                    counterAxis._offset + counterAxis._length
-                ]);
-            }
-
-            if(ax.anchor === 'free') {
-                extendRange(fullRange, (axLetter === 'x') ?
-                    [ax._boundingBox.bottom, ax._boundingBox.top] :
-                    [ax._boundingBox.right, ax._boundingBox.left]);
-            }
-        }
     }
 
     var hasRangeSlider = Registry.getComponentMethod('rangeslider', 'isVisible')(ax);
