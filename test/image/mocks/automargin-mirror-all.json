@@ -21,7 +21,7 @@
     "xaxis": {
       "automargin": true,
       "ticks": "outside",
-      "showline": true,
+      "showline": true, "linewidth": 5,
       "mirror": "all"
     },
     "xaxis2": {
@@ -40,7 +40,7 @@
     "yaxis2": {
       "automargin": true,
       "ticks": "outside",
-      "showline": true,
+      "showline": true, "linewidth": 10,
       "zeroline": false,
       "mirror": "all"
     },

@@ -35,7 +35,7 @@
     },
     "xaxis2": {
       "automargin": true,
-      "ticks": "outside",
+      "ticks": "outside", "ticklen": 10,
       "showline": true,
       "mirror": "allticks"
     },
@@ -48,8 +48,8 @@
     },
     "yaxis2": {
       "automargin": true,
-      "ticks": "outside",
-      "showline": true,
+      "ticks": "outside", "ticklen": 5,
+      "showline": true, "linewidth": 5,
       "zeroline": false,
       "mirror": "allticks"
     },
