@@ -157,7 +157,7 @@ describe('spikeline hover', function() {
     });
 
     it('draws lines up to x-axis position', function(done) {
-        Plotly.newPlot(gd, [
+        Plotly.plot(gd, [
             { y: [1, 2, 1] },
             { y: [2, 1, 2], yaxis: 'y2' }
         ], {
@@ -184,7 +184,7 @@ describe('spikeline hover', function() {
     });
 
     it('draws lines up to y-axis position', function(done) {
-        Plotly.newPlot(gd, [
+        Plotly.plot(gd, [
             { y: [1, 2, 1] },
             { y: [2, 1, 2], xaxis: 'x2' }
         ], {
