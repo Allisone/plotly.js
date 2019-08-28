@@ -183,6 +183,35 @@ describe('spikeline hover', function() {
         .then(done);
     });
 
+    it('draws lines up to y-axis position - anchor free case', function(done) {
+        Plotly.plot(gd, [
+            { y: [1, 2, 1] },
+            { y: [2, 1, 2], xaxis: 'x2' }
+        ], {
+            yaxis: { domain: [0.5, 1] },
+            xaxis2: {
+                anchor: 'free', position: 0, overlaying: 'x',
+                showspikes: true, spikemode: 'across'
+            },
+            width: 400,
+            height: 400,
+            showlegend: false
+        })
+        .then(function() {
+            _hover({xval: 0, yval: 2}, 'x2y');
+            // from "y" of pt, down to "y" of x2 axis
+            _assert([[95.75, 100, 95.75, 320]], []);
+        })
+        .then(function() { return Plotly.relayout(gd, 'xaxis2.position', 0.6); })
+        .then(function() {
+            _hover({xval: 0, yval: 2}, 'x2y');
+            // from "y" of pt, down to "y" of x axis (which is further down)
+            _assert([[95.75, 100, 95.75, 210]], []);
+        })
+        .catch(failTest)
+        .then(done);
+    });
+
     it('draws lines up to y-axis position', function(done) {
         Plotly.plot(gd, [
             { y: [1, 2, 1] },
@@ -207,6 +236,35 @@ describe('spikeline hover', function() {
             _hover({xval: 1, yval: 2});
             // from "x" at xy2 subplot left, to "x" at xy subplot right
             _assert([[80, 114.75, 320, 114.75]], []);
+        })
+        .catch(failTest)
+        .then(done);
+    });
+
+    it('draws lines up to y-axis position - anchor free case', function(done) {
+        Plotly.plot(gd, [
+            { y: [1, 2, 1] },
+            { y: [2, 1, 2], yaxis: 'y2' }
+        ], {
+            xaxis: { domain: [0.5, 1] },
+            yaxis2: {
+                anchor: 'free', position: 0, overlaying: 'y',
+                showspikes: true, spikemode: 'across'
+            },
+            width: 400,
+            height: 400,
+            showlegend: false
+        })
+        .then(function() {
+            _hover({xval: 0, yval: 2}, 'xy2');
+            // from "x" of y2 axis to "x" of pt
+            _assert([[80, 114.75, 320, 114.75]], []);
+        })
+        .then(function() { return Plotly.relayout(gd, 'yaxis2.position', 0.6); })
+        .then(function() {
+            _hover({xval: 0, yval: 2}, 'xy2');
+            // from "x" of y axis (which is further left) to "x" of pt
+            _assert([[200, 114.75, 320, 114.75]], []);
         })
         .catch(failTest)
         .then(done);
