@@ -181,6 +181,10 @@ var attrs = module.exports = overrideAll({
             description: 'Variables `sourceLinks` and `targetLinks` are arrays of link objects.',
             keys: ['value', 'label']
         }),
+        moreInfo: {
+            valType: 'data_array',
+            dflt: [],
+        },
         description: 'The nodes of the Sankey plot.'
     },
 
@@ -255,6 +259,10 @@ var attrs = module.exports = overrideAll({
             description: 'Variables `source` and `target` are node objects.',
             keys: ['value', 'label']
         }),
+        moreInfo: {
+            valType: 'data_array',
+            dflt: [],
+        },
         colorscales: templatedArray('concentrationscales', {
             editType: 'calc',
             label: {

@@ -296,6 +296,7 @@ function linkModel(d, l, i) {
     // for event data
     l.trace = d.trace;
     l.curveNumber = d.trace.index;
+    l.moreInfo = d.trace.link.moreInfo[i];
 
     return {
         circular: d.circular,
@@ -483,6 +484,7 @@ function nodeModel(d, n) {
     // for event data
     n.trace = d.trace;
     n.curveNumber = d.trace.index;
+    n.moreInfo = d.trace.node.moreInfo[n.pointNumber];
 
     return {
         index: n.pointNumber,
