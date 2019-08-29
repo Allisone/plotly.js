@@ -10,6 +10,8 @@
 
 var Lib = require('../../lib');
 var attributes = require('./attributes');
+var hasColorscale = require('../../components/colorscale/helpers').hasColorscale;
+var colorscaleDefaults = require('../../components/colorscale/defaults');
 var handleDomainDefaults = require('../../plots/domain').defaults;
 var handleText = require('../bar/defaults').handleText;
 
@@ -27,7 +29,11 @@ module.exports = function supplyDefaults(traceIn, traceOut, defaultColor, layout
     }
 
     var vals = coerce('values');
-    if(vals && vals.length) coerce('branchvalues');
+    if(vals && vals.length) {
+        coerce('branchvalues');
+    } else {
+        coerce('countbranches');
+    }
 
     coerce('level');
     coerce('maxdepth');
@@ -36,8 +42,12 @@ module.exports = function supplyDefaults(traceIn, traceOut, defaultColor, layout
     if(lineWidth) coerce('marker.line.color', layout.paper_bgcolor);
 
     coerce('marker.colors');
+    var withColorscale = hasColorscale(traceIn, 'marker');
+    if(withColorscale) {
+        colorscaleDefaults(traceIn, traceOut, layout, coerce, {prefix: 'marker.', cLetter: 'c'});
+    }
 
-    coerce('leaf.opacity');
+    coerce('leaf.opacity', withColorscale ? 1 : 0.7);
 
     var text = coerce('text');
     coerce('texttemplate');
