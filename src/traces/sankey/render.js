@@ -1021,6 +1021,42 @@ module.exports = function(gd, svg, calcData, layout, callbacks) {
         .attr('d', textGuidePath)
         .attr('transform', sankeyInverseTransform);
 
+    var nodeLabelImage = nodeCentered.selectAll('.' + 'node-label-image')
+        .data(repeat);
+
+    nodeLabelImage.enter()
+        .append('image')
+        .classed('node-label-image', true)
+        .attr('xlink:href', function(d) {
+            var label = d.node.label;
+
+            var IMG_REGEX = /(.*)(<img src=[\"\'])([^\"\']+)(.*[\"\']\s*[^\/]*\/>)(.*)/i;
+            var foundUrl = '';
+
+            label.replace(IMG_REGEX,
+                function(match, textA, prefix, url, suffix, textB) {
+                    foundUrl = url;
+                    return url;
+                }
+            );
+
+            return foundUrl;
+        })
+        .attr('style', 'transform: translateY(-9px) translateX(0px)')
+        //        .attr('width', function(d) {
+        //            var label = d.node.label;
+        //            var IMG_WIDTH_REGEX = /(<img src=["][^"]+["]\s*width=\")(\d+)(\"[^\/]*\/>)/i;
+        //            var width = '';
+        //            label.replace(IMG_WIDTH_REGEX, function(match, imgTag, numberValue) {
+        //                width = numberValue;
+        //                return numberValue;
+        //            });
+        //            debugger;
+        //            return width;
+        //        })
+        .attr('width', '16')
+        .attr('height', '16');
+
     var nodeLabel = nodeCentered.selectAll('.' + c.cn.nodeLabel)
         .data(repeat);
 
@@ -1055,7 +1091,17 @@ module.exports = function(gd, svg, calcData, layout, callbacks) {
         .style('fill', nodeTextColor);
 
     nodeLabelTextPath
-        .text(function(d) {return d.horizontal || d.node.dy > 5 ? d.node.label : '';})
+        .text(function(d) {
+            var label = d.node.label;
+            var IMG_REGEX = /(.*)(<img src=[\"\'])([^\"\']+)(.*[\"\']\s*[^\/]*\/>)(.*)/i;
+            var imgTag = '';
+            label = label.replace(IMG_REGEX,
+                function(match, textA, prefix, url, suffix, textB) {
+                    return textA + textB;
+                }
+            );
+            return d.horizontal || d.node.dy > 5 ? label : '';
+        })
         .attr('text-anchor', function(d) {return d.horizontal && d.left ? 'end' : 'start';});
 
     nodeLabelTextPath
