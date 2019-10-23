@@ -666,6 +666,8 @@ lib.minExtend = function(obj1, obj2) {
             } else {
                 objOut[k] = v.slice(0, arrayLen);
             }
+        } else if(lib.isTypedArray(v)) {
+            objOut[k] = v.subarray(0, arrayLen);
         } else if(v && (typeof v === 'object')) objOut[k] = lib.minExtend(obj1[k], obj2[k]);
         else objOut[k] = v;
     }
@@ -1159,6 +1161,10 @@ lib.isValidTextValue = function(v) {
     return v || v === 0;
 };
 
+/**
+ * @param {number} ratio
+ * @param {number} n (number of decimal places)
+ */
 lib.formatPercent = function(ratio, n) {
     n = n || 0;
     var str = (Math.round(100 * ratio * Math.pow(10, n)) * Math.pow(0.1, n)).toFixed(n) + '%';
@@ -1174,4 +1180,33 @@ lib.formatPercent = function(ratio, n) {
 lib.isHidden = function(gd) {
     var display = window.getComputedStyle(gd).display;
     return !display || display === 'none';
+};
+
+lib.getTextTransform = function(opts) {
+    var textX = opts.textX;
+    var textY = opts.textY;
+    var targetX = opts.targetX;
+    var targetY = opts.targetY;
+    var scale = opts.scale;
+    var rotate = opts.rotate;
+
+    var transformScale;
+    var transformRotate;
+    var transformTranslate;
+
+    if(scale < 1) transformScale = 'scale(' + scale + ') ';
+    else {
+        scale = 1;
+        transformScale = '';
+    }
+
+    transformRotate = (rotate) ?
+        'rotate(' + rotate + ' ' + textX + ' ' + textY + ') ' : '';
+
+    // Note that scaling also affects the center of the text box
+    var translateX = (targetX - scale * textX);
+    var translateY = (targetY - scale * textY);
+    transformTranslate = 'translate(' + translateX + ' ' + translateY + ')';
+
+    return transformTranslate + transformScale + transformRotate;
 };

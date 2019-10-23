@@ -315,9 +315,16 @@ proto.updateData = function(calcData) {
         trace = calcTrace[0].trace;
         traceObj = traceHash[trace.uid];
 
+        var didUpdate = false;
         if(traceObj) {
-            traceObj.update(calcTrace);
-        } else if(trace._module) {
+            if(traceObj.type === trace.type) {
+                traceObj.update(calcTrace);
+                didUpdate = true;
+            } else {
+                traceObj.dispose();
+            }
+        }
+        if(!didUpdate && trace._module) {
             traceHash[trace.uid] = trace._module.plot(this, calcTrace);
         }
     }
@@ -367,7 +374,10 @@ proto.resolveOnRender = function(resolve) {
         if(map.loaded()) {
             map.off('render', onRender);
             // resolve at end of render loop
-            setTimeout(resolve, 0);
+            //
+            // Need a 10ms delay (0ms should suffice to skip a thread in the
+            // render loop) to workaround mapbox-gl bug introduced in v1.3.0
+            setTimeout(resolve, 10);
         }
     });
 };
@@ -472,7 +482,7 @@ proto.initFx = function(calcData, fullLayout) {
         self.yaxis.p2c = function() { return evt.lngLat.lat; };
 
         gd._fullLayout._rehover = function() {
-            if(gd._fullLayout._hoversubplot === self.id) {
+            if(gd._fullLayout._hoversubplot === self.id && gd._fullLayout[self.id]) {
                 Fx.hover(gd, evt, self.id);
             }
         };

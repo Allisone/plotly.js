@@ -224,24 +224,20 @@ function _hover(gd, evt, subplot, noHoverEvent) {
     for(var i = 0; i < len; i++) {
         var spId = subplots[i];
 
-        // 'cartesian' case
-        var plotObj = plots[spId];
-        if(plotObj) {
+        if(plots[spId]) {
+            // 'cartesian' case
             supportsCompare = true;
-
-            // TODO make sure that fullLayout_plots axis refs
-            // get updated properly so that we don't have
-            // to use Axes.getFromId in general.
-
-            xaArray[i] = Axes.getFromId(gd, plotObj.xaxis._id);
-            yaArray[i] = Axes.getFromId(gd, plotObj.yaxis._id);
-            continue;
+            xaArray[i] = plots[spId].xaxis;
+            yaArray[i] = plots[spId].yaxis;
+        } else if(fullLayout[spId] && fullLayout[spId]._subplot) {
+            // other subplot types
+            var _subplot = fullLayout[spId]._subplot;
+            xaArray[i] = _subplot.xaxis;
+            yaArray[i] = _subplot.yaxis;
+        } else {
+            Lib.warn('Unrecognized subplot: ' + spId);
+            return;
         }
-
-        // other subplot types
-        var _subplot = fullLayout[spId]._subplot;
-        xaArray[i] = _subplot.xaxis;
-        yaArray[i] = _subplot.yaxis;
     }
 
     var hovermode = evt.hovermode || fullLayout.hovermode;
@@ -605,7 +601,7 @@ function _hover(gd, evt, subplot, noHoverEvent) {
         var result = dragElement.unhoverRaw(gd, evt);
         if(hasCartesian && ((spikePoints.hLinePoint !== null) || (spikePoints.vLinePoint !== null))) {
             if(spikesChanged(oldspikepoints)) {
-                createSpikelines(spikePoints, spikelineOpts);
+                createSpikelines(gd, spikePoints, spikelineOpts);
             }
         }
         return result;
@@ -613,7 +609,7 @@ function _hover(gd, evt, subplot, noHoverEvent) {
 
     if(hasCartesian) {
         if(spikesChanged(oldspikepoints)) {
-            createSpikelines(spikePoints, spikelineOpts);
+            createSpikelines(gd, spikePoints, spikelineOpts);
         }
     }
 
@@ -1396,9 +1392,10 @@ function cleanPoint(d, hovermode) {
     return d;
 }
 
-function createSpikelines(closestPoints, opts) {
+function createSpikelines(gd, closestPoints, opts) {
     var container = opts.container;
     var fullLayout = opts.fullLayout;
+    var gs = fullLayout._size;
     var evt = opts.event;
     var showY = !!closestPoints.hLinePoint;
     var showX = !!closestPoints.vLinePoint;
@@ -1433,8 +1430,7 @@ function createSpikelines(closestPoints, opts) {
         var yMode = ya.spikemode;
         var yThickness = ya.spikethickness;
         var yColor = ya.spikecolor || dfltHLineColor;
-        var yBB = ya._boundingBox;
-        var xEdge = ((yBB.left + yBB.right) / 2) < hLinePointX ? yBB.right : yBB.left;
+        var xEdge = Axes.getPxPosition(gd, ya);
         var xBase, xEndSpike;
 
         if(yMode.indexOf('toaxis') !== -1 || yMode.indexOf('across') !== -1) {
@@ -1443,8 +1439,14 @@ function createSpikelines(closestPoints, opts) {
                 xEndSpike = hLinePointX;
             }
             if(yMode.indexOf('across') !== -1) {
-                xBase = ya._counterSpan[0];
-                xEndSpike = ya._counterSpan[1];
+                var xAcross0 = ya._counterDomainMin;
+                var xAcross1 = ya._counterDomainMax;
+                if(ya.anchor === 'free') {
+                    xAcross0 = Math.min(xAcross0, ya.position);
+                    xAcross1 = Math.max(xAcross1, ya.position);
+                }
+                xBase = gs.l + xAcross0 * gs.w;
+                xEndSpike = gs.l + xAcross1 * gs.w;
             }
 
             // Foreground horizontal line (to y-axis)
@@ -1507,8 +1509,7 @@ function createSpikelines(closestPoints, opts) {
         var xMode = xa.spikemode;
         var xThickness = xa.spikethickness;
         var xColor = xa.spikecolor || dfltVLineColor;
-        var xBB = xa._boundingBox;
-        var yEdge = ((xBB.top + xBB.bottom) / 2) < vLinePointY ? xBB.bottom : xBB.top;
+        var yEdge = Axes.getPxPosition(gd, xa);
         var yBase, yEndSpike;
 
         if(xMode.indexOf('toaxis') !== -1 || xMode.indexOf('across') !== -1) {
@@ -1517,8 +1518,14 @@ function createSpikelines(closestPoints, opts) {
                 yEndSpike = vLinePointY;
             }
             if(xMode.indexOf('across') !== -1) {
-                yBase = xa._counterSpan[0];
-                yEndSpike = xa._counterSpan[1];
+                var yAcross0 = xa._counterDomainMin;
+                var yAcross1 = xa._counterDomainMax;
+                if(xa.anchor === 'free') {
+                    yAcross0 = Math.min(yAcross0, xa.position);
+                    yAcross1 = Math.max(yAcross1, xa.position);
+                }
+                yBase = gs.t + (1 - yAcross1) * gs.h;
+                yEndSpike = gs.t + (1 - yAcross0) * gs.h;
             }
 
             // Foreground vertical line (to x-axis)

@@ -1,5 +1,6 @@
 var Plotly = require('@lib');
 var Lib = require('@src/lib');
+var Fx = require('@src/components/fx');
 
 var constants = require('@src/plots/mapbox/constants');
 var supplyLayoutDefaults = require('@src/plots/mapbox/layout_defaults');
@@ -942,6 +943,80 @@ describe('@noCI, mapbox plots', function() {
         .then(done);
     }, LONG_TIMEOUT_INTERVAL);
 
+    it('@gl should not wedge graph after reacting to invalid layer', function(done) {
+        Plotly.react(gd, [{type: 'scattermapbox'}], {
+            mapbox: {
+                layers: [{ source: 'invalid' }]
+            }
+        })
+        .then(function() {
+            fail('The above Plotly.react promise should be rejected');
+        })
+        .catch(function() {
+            expect(gd._promises.length).toBe(1, 'has 1 rejected promise in queue');
+        })
+        .then(function() {
+            return Plotly.react(gd, [{type: 'scattermapbox'}], {
+                mapbox: {
+                    layers: [{
+                        sourcetype: 'vector',
+                        sourcelayer: 'contour',
+                        source: 'mapbox://mapbox.mapbox-terrain-v2'
+                    }]
+                }
+            });
+        })
+        .then(function() {
+            expect(gd._promises.length).toBe(0, 'rejected promise has been cleared');
+
+            var mapInfo = getMapInfo(gd);
+            expect(mapInfo.layoutLayers.length).toBe(1, 'one layer');
+            expect(mapInfo.layoutSources.length).toBe(1, 'one layer source');
+        })
+        .catch(failTest)
+        .then(done);
+    }, LONG_TIMEOUT_INTERVAL);
+
+    it('@gl should not attempt to remove non-existing layer sources', function(done) {
+        function _assert(msg, exp) {
+            return function() {
+                var layerList = gd._fullLayout.mapbox._subplot.layerList;
+                expect(layerList.length).toBe(exp, msg);
+            };
+        }
+
+        Plotly.react(gd, [{type: 'scattermapbox'}], {
+            mapbox: { layers: [{}] }
+        })
+        .then(_assert('1 visible:false layer', 1))
+        .then(function() {
+            return Plotly.react(gd, [{type: 'scattermapbox'}], {
+                mapbox: { layers: [] }
+            });
+        })
+        .then(_assert('no layers', 0))
+        .catch(failTest)
+        .then(done);
+    }, LONG_TIMEOUT_INTERVAL);
+
+    it('@gl should validate layout layer input', function(done) {
+        Plotly.newPlot(gd, [{type: 'scattermapbox'}], {
+            mapbox: {
+                layers: [{
+                    sourcetype: 'raster',
+                    source: ['']
+                }]
+            }
+        })
+        .then(function() {
+            var mapInfo = getMapInfo(gd);
+            expect(mapInfo.layoutLayers.length).toBe(0, 'no on-map layer');
+            expect(mapInfo.layoutSources.length).toBe(0, 'no map source');
+        })
+        .catch(failTest)
+        .then(done);
+    }, LONG_TIMEOUT_INTERVAL);
+
     it('@gl should be able to update the access token', function(done) {
         Plotly.relayout(gd, 'mapbox.accesstoken', 'wont-work').catch(function(err) {
             expect(gd._fullLayout.mapbox.accesstoken).toEqual('wont-work');
@@ -1076,6 +1151,38 @@ describe('@noCI, mapbox plots', function() {
         .then(function() {
             expect(hoverCnt).toEqual(1);
             expect(unhoverCnt).toEqual(1);
+        })
+        .catch(failTest)
+        .then(done);
+    }, LONG_TIMEOUT_INTERVAL);
+
+    it('@gl should not attempt to rehover over exiting subplots', function(done) {
+        spyOn(Fx, 'hover').and.callThrough();
+
+        function countHoverLabels() {
+            return d3.select('.hoverlayer').selectAll('g').size();
+        }
+
+        Promise.resolve()
+        .then(function() {
+            return _mouseEvent('mousemove', pointPos, function() {
+                expect(countHoverLabels()).toEqual(1);
+                expect(Fx.hover).toHaveBeenCalledTimes(1);
+                expect(Fx.hover.calls.argsFor(0)[2]).toBe('mapbox');
+                Fx.hover.calls.reset();
+            });
+        })
+        .then(function() { return Plotly.deleteTraces(gd, [0, 1]); })
+        .then(delay(10))
+        .then(function() {
+            return _mouseEvent('mousemove', pointPos, function() {
+                expect(countHoverLabels()).toEqual(0);
+                // N.B. no additional calls from Plots.rehover()
+                // (as 'mapbox' subplot is gone),
+                // just one on the fallback xy subplot
+                expect(Fx.hover).toHaveBeenCalledTimes(1);
+                expect(Fx.hover.calls.argsFor(0)[2]).toBe('xy');
+            });
         })
         .catch(failTest)
         .then(done);

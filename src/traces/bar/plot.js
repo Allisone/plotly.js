@@ -21,6 +21,7 @@ var tickText = require('../../plots/cartesian/axes').tickText;
 
 var style = require('./style');
 var helpers = require('./helpers');
+var constants = require('./constants');
 var attributes = require('./attributes');
 
 var attributeText = attributes.text;
@@ -28,8 +29,14 @@ var attributeTextPosition = attributes.textposition;
 
 var appendArrayPointValue = require('../../components/fx/helpers').appendArrayPointValue;
 
-// padding in pixels around text
-var TEXTPAD = 3;
+var TEXTPAD = constants.TEXTPAD;
+
+function keyFunc(d) {return d.id;}
+function getKeyFunc(trace) {
+    if(trace.ids) {
+        return keyFunc;
+    }
+}
 
 function dirSign(a, b) {
     return (a < b) ? 1 : -1;
@@ -51,7 +58,28 @@ function getXY(di, xa, ya, isHorizontal) {
     return isHorizontal ? [s, p] : [p, s];
 }
 
-function plot(gd, plotinfo, cdModule, traceLayer, opts) {
+function transition(selection, opts, makeOnCompleteCallback) {
+    if(hasTransition(opts)) {
+        var onComplete;
+        if(makeOnCompleteCallback) {
+            onComplete = makeOnCompleteCallback();
+        }
+        return selection
+          .transition()
+          .duration(opts.duration)
+          .ease(opts.easing)
+          .each('end', function() { onComplete && onComplete(); })
+          .each('interrupt', function() { onComplete && onComplete(); });
+    } else {
+        return selection;
+    }
+}
+
+function hasTransition(transitionOpts) {
+    return transitionOpts && transitionOpts.duration > 0;
+}
+
+function plot(gd, plotinfo, cdModule, traceLayer, opts, makeOnCompleteCallback) {
     var xa = plotinfo.xaxis;
     var ya = plotinfo.yaxis;
     var fullLayout = gd._fullLayout;
@@ -82,7 +110,8 @@ function plot(gd, plotinfo, cdModule, traceLayer, opts) {
 
         var pointGroup = Lib.ensureSingle(plotGroup, 'g', 'points');
 
-        var bars = pointGroup.selectAll('g.point').data(Lib.identity);
+        var keyFunc = getKeyFunc(trace);
+        var bars = pointGroup.selectAll('g.point').data(Lib.identity, keyFunc);
 
         bars.enter().append('g')
             .classed('point', true);
@@ -96,7 +125,6 @@ function plot(gd, plotinfo, cdModule, traceLayer, opts) {
             // clipped xf/yf (2nd arg true): non-positive
             // log values go off-screen by plotwidth
             // so you see them continue if you drag the plot
-
             var xy = getXY(di, xa, ya, isHorizontal);
 
             var x0 = xy[0][0];
@@ -118,8 +146,11 @@ function plot(gd, plotinfo, cdModule, traceLayer, opts) {
             }
             di.isBlank = isBlank;
 
+            if(isBlank && isHorizontal) x1 = x0;
+            if(isBlank && !isHorizontal) y1 = y0;
+
             // in waterfall mode `between` we need to adjust bar end points to match the connector width
-            if(adjustPixel) {
+            if(adjustPixel && !isBlank) {
                 if(isHorizontal) {
                     x0 -= dirSign(x0, x1) * adjustPixel;
                     x1 += dirSign(x0, x1) * adjustPixel;
@@ -178,12 +209,18 @@ function plot(gd, plotinfo, cdModule, traceLayer, opts) {
                 y1 = fixpx(y1, y0);
             }
 
-            Lib.ensureSingle(bar, 'path')
+            var sel = transition(Lib.ensureSingle(bar, 'path'), opts, makeOnCompleteCallback);
+            sel
                 .style('vector-effect', 'non-scaling-stroke')
-                .attr('d', isBlank ? 'M0,0Z' : 'M' + x0 + ',' + y0 + 'V' + y1 + 'H' + x1 + 'V' + y0 + 'Z')
+                .attr('d', 'M' + x0 + ',' + y0 + 'V' + y1 + 'H' + x1 + 'V' + y0 + 'Z')
                 .call(Drawing.setClipUrl, plotinfo.layerClipId, gd);
 
-            appendBarText(gd, plotinfo, bar, cd, i, x0, x1, y0, y1, opts);
+            if(hasTransition(opts)) {
+                var styleFns = Drawing.makePointStyleFns(trace);
+                Drawing.singlePointStyle(di, sel, trace, styleFns, gd);
+            }
+
+            appendBarText(gd, plotinfo, bar, cd, i, x0, x1, y0, y1, opts, makeOnCompleteCallback);
 
             if(plotinfo.layerClipId) {
                 Drawing.hideOutsideRangePoint(di, bar.select('text'), xa, ya, trace.xcalendar, trace.ycalendar);
@@ -197,10 +234,10 @@ function plot(gd, plotinfo, cdModule, traceLayer, opts) {
     });
 
     // error bars are on the top
-    Registry.getComponentMethod('errorbars', 'plot')(gd, bartraces, plotinfo);
+    Registry.getComponentMethod('errorbars', 'plot')(gd, bartraces, plotinfo, opts);
 }
 
-function appendBarText(gd, plotinfo, bar, calcTrace, i, x0, x1, y0, y1, opts) {
+function appendBarText(gd, plotinfo, bar, calcTrace, i, x0, x1, y0, y1, opts, makeOnCompleteCallback) {
     var xa = plotinfo.xaxis;
     var ya = plotinfo.yaxis;
 
@@ -212,7 +249,6 @@ function appendBarText(gd, plotinfo, bar, calcTrace, i, x0, x1, y0, y1, opts) {
             .text(text)
             .attr({
                 'class': 'bartext bartext-' + textPosition,
-                transform: '',
                 'text-anchor': 'middle',
                 // prohibit tex interpretation until we can handle
                 // tex and regular text together
@@ -325,9 +361,12 @@ function appendBarText(gd, plotinfo, bar, calcTrace, i, x0, x1, y0, y1, opts) {
                 (textPosition === 'outside') ?
                 outsideTextFont : insideTextFont);
 
+        var currentTransform = textSelection.attr('transform');
+        textSelection.attr('transform', '');
         textBB = Drawing.bBox(textSelection.node()),
         textWidth = textBB.width,
         textHeight = textBB.height;
+        textSelection.attr('transform', currentTransform);
 
         if(textWidth <= 0 || textHeight <= 0) {
             textSelection.remove();
@@ -342,7 +381,7 @@ function appendBarText(gd, plotinfo, bar, calcTrace, i, x0, x1, y0, y1, opts) {
             trace.constraintext === 'both' ||
             trace.constraintext === 'outside';
 
-        transform = getTransform(toMoveOutsideBar(x0, x1, y0, y1, textBB, {
+        transform = Lib.getTextTransform(toMoveOutsideBar(x0, x1, y0, y1, textBB, {
             isHorizontal: isHorizontal,
             constrained: constrained,
             angle: trace.textangle
@@ -352,7 +391,7 @@ function appendBarText(gd, plotinfo, bar, calcTrace, i, x0, x1, y0, y1, opts) {
             trace.constraintext === 'both' ||
             trace.constraintext === 'inside';
 
-        transform = getTransform(toMoveInsideBar(x0, x1, y0, y1, textBB, {
+        transform = Lib.getTextTransform(toMoveInsideBar(x0, x1, y0, y1, textBB, {
             isHorizontal: isHorizontal,
             constrained: constrained,
             angle: trace.textangle,
@@ -360,7 +399,7 @@ function appendBarText(gd, plotinfo, bar, calcTrace, i, x0, x1, y0, y1, opts) {
         }));
     }
 
-    textSelection.attr('transform', transform);
+    transition(textSelection, opts, makeOnCompleteCallback).attr('transform', transform);
 }
 
 function getRotateFromAngle(angle) {
@@ -508,35 +547,6 @@ function toMoveOutsideBar(x0, x1, y0, y1, textBB, opts) {
         scale: scale,
         rotate: rotate
     };
-}
-
-function getTransform(opts) {
-    var textX = opts.textX;
-    var textY = opts.textY;
-    var targetX = opts.targetX;
-    var targetY = opts.targetY;
-    var scale = opts.scale;
-    var rotate = opts.rotate;
-
-    var transformScale;
-    var transformRotate;
-    var transformTranslate;
-
-    if(scale < 1) transformScale = 'scale(' + scale + ') ';
-    else {
-        scale = 1;
-        transformScale = '';
-    }
-
-    transformRotate = (rotate) ?
-        'rotate(' + rotate + ' ' + textX + ' ' + textY + ') ' : '';
-
-    // Note that scaling also affects the center of the text box
-    var translateX = (targetX - scale * textX);
-    var translateY = (targetY - scale * textY);
-    transformTranslate = 'translate(' + translateX + ' ' + translateY + ')';
-
-    return transformTranslate + transformScale + transformRotate;
 }
 
 function getText(fullLayout, calcTrace, index, xa, ya) {
@@ -695,7 +705,6 @@ function calcTextinfo(calcTrace, index, xa, ya) {
 
 module.exports = {
     plot: plot,
-    getTransform: getTransform,
     toMoveInsideBar: toMoveInsideBar,
     toMoveOutsideBar: toMoveOutsideBar
 };
