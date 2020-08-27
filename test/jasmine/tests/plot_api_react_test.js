@@ -937,6 +937,192 @@ describe('resizing with Plotly.relayout and Plotly.react', function() {
     });
 });
 
+describe('clear bglayer react', function() {
+    var x = [1];
+    var y = [2];
+    var z = [3];
+
+    var gd;
+
+    beforeEach(function() {
+        gd = createGraphDiv();
+    });
+
+    afterEach(destroyGraphDiv);
+
+    function hasBgRect() {
+        var bgLayer = d3.selectAll('.bglayer .bg');
+        return bgLayer[0][0] !== undefined; // i.e. background rect
+    }
+
+    it('clear plot background when react from cartesian to gl3d & back', function(done) {
+        Plotly.newPlot(gd, {
+            data: [{ type: 'scatter', x: x, y: y, z: z }],
+            layout: { plot_bgcolor: 'green' }
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('green');
+            expect(hasBgRect()).toBe(true);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter3d', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'red' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe(undefined);
+            expect(hasBgRect()).toBe(false);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'green' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('green');
+            expect(hasBgRect()).toBe(true);
+        })
+        .catch(failTest)
+        .then(done);
+    });
+
+    it('clear plot background when react from gl2d to gl3d & back', function(done) {
+        Plotly.newPlot(gd, {
+            data: [{ type: 'scatter2d', x: x, y: y, z: z }],
+            layout: { plot_bgcolor: 'green' }
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('green');
+            expect(hasBgRect()).toBe(true);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter3d', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'red' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe(undefined);
+            expect(hasBgRect()).toBe(false);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter2d', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'green' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('green');
+            expect(hasBgRect()).toBe(true);
+        })
+        .catch(failTest)
+        .then(done);
+    });
+
+    it('create plot background when react from gl3d to gl2d & back', function(done) {
+        Plotly.newPlot(gd, {
+            data: [{ type: 'scatter3d', x: x, y: y, z: z }],
+            layout: { plot_bgcolor: 'red' }
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe(undefined);
+            expect(hasBgRect()).toBe(false);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter2d', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'green' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('green');
+            expect(hasBgRect()).toBe(true);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter3d', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'red' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe(undefined);
+            expect(hasBgRect()).toBe(false);
+        })
+        .catch(failTest)
+        .then(done);
+    });
+
+    it('create plot background when react from gl3d to cartesian & back', function(done) {
+        Plotly.newPlot(gd, {
+            data: [{ type: 'scatter3d', x: x, y: y, z: z }],
+            layout: { plot_bgcolor: 'red' }
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe(undefined);
+            expect(hasBgRect()).toBe(false);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'green' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('green');
+            expect(hasBgRect()).toBe(true);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter3d', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'red' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe(undefined);
+            expect(hasBgRect()).toBe(false);
+        })
+        .catch(failTest)
+        .then(done);
+    });
+
+    it('change plot background when react from cartesian to gl2d & back', function(done) {
+        Plotly.newPlot(gd, {
+            data: [{ type: 'scatter', x: x, y: y, z: z }],
+            layout: { plot_bgcolor: 'yellow' }
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('yellow');
+            expect(hasBgRect()).toBe(true);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter2d', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'green' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('green');
+            expect(hasBgRect()).toBe(true);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'yellow' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('yellow');
+            expect(hasBgRect()).toBe(true);
+        })
+        .catch(failTest)
+        .then(done);
+    });
+
+    it('change plot background when react from gl2d to cartesian & back', function(done) {
+        Plotly.newPlot(gd, {
+            data: [{ type: 'scatter2d', x: x, y: y, z: z }],
+            layout: { plot_bgcolor: 'yellow' }
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('yellow');
+            expect(hasBgRect()).toBe(true);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'green' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('green');
+            expect(hasBgRect()).toBe(true);
+        }).then(function() {
+            Plotly.react(gd, {
+                data: [{ type: 'scatter2d', x: x, y: y, z: z }],
+                layout: { plot_bgcolor: 'yellow' }
+            });
+        }).then(function() {
+            expect(gd._fullLayout.plot_bgcolor).toBe('yellow');
+            expect(hasBgRect()).toBe(true);
+        })
+        .catch(failTest)
+        .then(done);
+    });
+});
 
 describe('Plotly.react and uirevision attributes', function() {
     var gd;
@@ -1450,6 +1636,39 @@ describe('Plotly.react and uirevision attributes', function() {
         _run(fig, editView, checkOriginalView, checkEditedView).then(done);
     });
 
+    it('preserves geo viewport changes using geo.uirevision (fitbounds case)', function(done) {
+        function fig(mainRev, geoRev) {
+            return {
+                data: [{
+                    type: 'scattergeo', lon: [0, -75], lat: [0, 45]
+                }],
+                layout: {
+                    uirevision: mainRev,
+                    geo: {uirevision: geoRev, fitbounds: 'locations'}
+                }
+            };
+        }
+
+        function attrs(original) {
+            return {
+                'geo.fitbounds': original ? ['locations', 'locations'] : false,
+                'geo.projection.scale': original ? [undefined, undefined] : 3,
+                'geo.projection.rotation.lon': original ? [undefined, undefined] : -45,
+                'geo.center.lat': original ? [undefined, undefined] : 22,
+                'geo.center.lon': original ? [undefined, undefined] : -45
+            };
+        }
+
+        function editView() {
+            return Registry.call('_guiRelayout', gd, attrs());
+        }
+
+        var checkOriginalView = checkState([], attrs(true));
+        var checkEditedView = checkState([], attrs());
+
+        _run(fig, editView, checkOriginalView, checkEditedView).then(done);
+    });
+
     it('@gl preserves 3d camera changes using scene.uirevision', function(done) {
         function fig(mainRev, sceneRev) {
             return {
@@ -1901,6 +2120,42 @@ describe('Plotly.react and uirevision attributes', function() {
         .catch(failTest)
         .then(done);
     });
+
+    it('preserves treemap level changes', function(done) {
+        function assertLevel(msg, exp) {
+            expect(gd._fullData[0].level).toBe(exp, msg);
+        }
+
+        Plotly.react(gd, [{
+            type: 'treemap',
+            labels: ['Eve', 'Cain', 'Seth', 'Enos', 'Noam', 'Abel', 'Awan', 'Enoch', 'Azura'],
+            parents: ['', 'Eve', 'Eve', 'Seth', 'Seth', 'Eve', 'Eve', 'Awan', 'Eve'],
+            uirevision: 1
+        }])
+        .then(function() {
+            assertLevel('no set level at start', undefined);
+        })
+        .then(function() {
+            var nodeSeth = d3.select('.slice:nth-child(2)').node();
+            mouseEvent('click', 0, 0, {element: nodeSeth});
+        })
+        .then(function() {
+            assertLevel('after clicking on Seth sector', 'Seth');
+        })
+        .then(function() {
+            return Plotly.react(gd, [{
+                type: 'treemap',
+                labels: ['Eve', 'Cain', 'Seth', 'Enos', 'Noam', 'Abel', 'Awan', 'Enoch', 'Azura', 'Joe'],
+                parents: ['', 'Eve', 'Eve', 'Seth', 'Seth', 'Eve', 'Eve', 'Awan', 'Eve', 'Seth'],
+                uirevision: 1
+            }]);
+        })
+        .then(function() {
+            assertLevel('after reacting with new data, but with same uirevision', 'Seth');
+        })
+        .catch(failTest)
+        .then(done);
+    });
 });
 
 describe('Test Plotly.react + interactions under uirevision:', function() {
@@ -1932,11 +2187,14 @@ describe('Test Plotly.react + interactions under uirevision:', function() {
         function _mouseup() {
             var sceneLayout = gd._fullLayout.scene;
             var cameraOld = sceneLayout.camera;
-            sceneLayout._scene.setCamera({
-                projection: {type: 'perspective'},
-                eye: {x: 2, y: 2, z: 2},
-                center: cameraOld.center,
-                up: cameraOld.up
+            sceneLayout._scene.setViewport({
+                camera: {
+                    projection: {type: 'perspective'},
+                    eye: {x: 2, y: 2, z: 2},
+                    center: cameraOld.center,
+                    up: cameraOld.up
+                },
+                aspectratio: gd._fullLayout.scene.aspectratio
             });
 
             var target = gd.querySelector('.svg-container .gl-container #scene canvas');

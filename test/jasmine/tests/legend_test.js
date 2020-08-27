@@ -172,6 +172,44 @@ describe('legend defaults', function() {
         expect(layoutOut.legend.orientation).toEqual('v');
     });
 
+    it('should not coerce `title.font` and `title.side` if the `title.text` is blank', function() {
+        var layoutWithTitle = Lib.extendDeep({
+            legend: {
+                title: {
+                    text: ''
+                }
+            }
+        }, layoutIn);
+        supplyLayoutDefaults(layoutWithTitle, layoutOut, []);
+        expect(layoutOut.legend.title.font).toEqual(undefined);
+        expect(layoutOut.legend.title.side).toEqual(undefined);
+    });
+
+    it('should default `title.side` to *top* for vertical legends', function() {
+        var layoutWithTitle = Lib.extendDeep({
+            legend: {
+                title: {
+                    text: 'Legend Title'
+                }
+            }
+        }, layoutIn);
+        supplyLayoutDefaults(layoutWithTitle, layoutOut, []);
+        expect(layoutOut.legend.title.side).toEqual('top');
+    });
+
+    it('should default `title.side` to *left* for horizontal legends', function() {
+        var layoutWithTitle = Lib.extendDeep({
+            legend: {
+                orientation: 'h',
+                title: {
+                    text: 'Legend Title'
+                }
+            }
+        }, layoutIn);
+        supplyLayoutDefaults(layoutWithTitle, layoutOut, []);
+        expect(layoutOut.legend.title.side).toEqual('left');
+    });
+
     describe('for horizontal legends', function() {
         var layoutInForHorizontalLegends;
 
@@ -350,6 +388,7 @@ describe('legend getLegendData', function() {
             }}]
         ];
         opts = {
+            _main: true,
             traceorder: 'normal'
         };
 
@@ -591,9 +630,7 @@ describe('legend anchor utils:', function() {
 });
 
 describe('legend relayout update', function() {
-    'use strict';
     var gd;
-    var mock = require('@mocks/0.json');
 
     beforeEach(function() {
         gd = createGraphDiv();
@@ -601,7 +638,7 @@ describe('legend relayout update', function() {
     afterEach(destroyGraphDiv);
 
     it('should hide and show the legend', function(done) {
-        var mockCopy = Lib.extendDeep({}, mock, {layout: {
+        var mockCopy = Lib.extendDeep({}, require('@mocks/0.json'), {layout: {
             legend: {x: 1.1, xanchor: 'left'},
             margin: {l: 50, r: 50, pad: 0},
             width: 500
@@ -633,7 +670,7 @@ describe('legend relayout update', function() {
     });
 
     it('should update border styling', function(done) {
-        var mockCopy = Lib.extendDeep({}, mock);
+        var mockCopy = Lib.extendDeep({}, require('@mocks/0.json'));
 
         function assertLegendStyle(bgColor, borderColor, borderWidth) {
             var node = d3.select('g.legend').select('rect').node();
@@ -670,21 +707,13 @@ describe('legend relayout update', function() {
     });
 
     describe('should update legend valign', function() {
-        var mock = require('@mocks/legend_valign_top.json');
-        var gd;
-
-        beforeEach(function() {
-            gd = createGraphDiv();
-        });
-        afterEach(destroyGraphDiv);
-
         function markerOffsetY() {
             var translate = Drawing.getTranslate(d3.select('.legend .traces .layers'));
             return translate.y;
         }
 
         it('it should translate markers', function(done) {
-            var mockCopy = Lib.extendDeep({}, mock);
+            var mockCopy = Lib.extendDeep({}, require('@mocks/legend_valign_top.json'));
 
             var top, middle, bottom;
             Plotly.plot(gd, mockCopy.data, mockCopy.layout)
@@ -707,31 +736,123 @@ describe('legend relayout update', function() {
     });
 
     describe('with legendgroup', function() {
-        var mock = require('@mocks/legendgroup_horizontal_wrapping.json');
-        var gd;
-
-        beforeEach(function() {
-            gd = createGraphDiv();
-        });
-        afterEach(destroyGraphDiv);
-
         it('changes the margin size to fit tracegroupgap', function(done) {
-            var mockCopy = Lib.extendDeep({}, mock);
+            var mockCopy = Lib.extendDeep({}, require('@mocks/legendgroup_horizontal_wrapping.json'));
             Plotly.newPlot(gd, mockCopy)
             .then(function() {
-                expect(gd._fullLayout._size.b).toBe(130);
+                expect(gd._fullLayout._size.b).toBe(113);
                 return Plotly.relayout(gd, 'legend.tracegroupgap', 70);
             })
             .then(function() {
-                expect(gd._fullLayout._size.b).toBe(185);
+                expect(gd._fullLayout._size.b).toBe(167);
                 return Plotly.relayout(gd, 'legend.tracegroupgap', 10);
             })
             .then(function() {
-                expect(gd._fullLayout._size.b).toBe(130);
+                expect(gd._fullLayout._size.b).toBe(113);
             })
             .catch(failTest)
             .then(done);
         });
+    });
+
+    it('should make legend fit in graph viewport', function(done) {
+        var fig = Lib.extendDeep({}, require('@mocks/legend_negative_x.json'));
+
+        function _assert(msg, xy, wh) {
+            return function() {
+                var fullLayout = gd._fullLayout;
+                var legend3 = d3.select('g.legend');
+                var bg3 = legend3.select('rect.bg');
+                var translate = Drawing.getTranslate(legend3);
+                var x = translate.x;
+                var y = translate.y;
+                var w = +bg3.attr('width');
+                var h = +bg3.attr('height');
+                expect([x, y]).toBeWithinArray(xy, 25, msg + '| legend x,y');
+                expect([w, h]).toBeWithinArray(wh, 25, msg + '| legend w,h');
+                expect(x + w <= fullLayout.width).toBe(true, msg + '| fits in x');
+                expect(y + h <= fullLayout.height).toBe(true, msg + '| fits in y');
+            };
+        }
+
+        Plotly.plot(gd, fig)
+        .then(_assert('base', [5, 4.4], [512, 29]))
+        .then(function() { return Plotly.relayout(gd, 'legend.x', 0.8); })
+        .then(_assert('after relayout almost to right edge', [188, 4.4], [512, 29]))
+        .catch(failTest)
+        .then(done);
+    });
+
+    it('should fit in graph viewport when changing legend.title.side', function(done) {
+        var fig = Lib.extendDeep({}, require('@mocks/0.json'));
+        fig.layout.legend = {
+            title: {
+                text: 'legend title'
+            }
+        };
+
+        function _assert(msg, xy, wh) {
+            return function() {
+                var fullLayout = gd._fullLayout;
+                var legend3 = d3.select('g.legend');
+                var bg3 = legend3.select('rect.bg');
+                var translate = Drawing.getTranslate(legend3);
+                var x = translate.x;
+                var y = translate.y;
+                var w = +bg3.attr('width');
+                var h = +bg3.attr('height');
+
+                expect([x, y]).toBeWithinArray(xy, 25, msg + '| legend x,y');
+                expect([w, h]).toBeWithinArray(wh, 25, msg + '| legend w,h');
+                expect(x + w <= fullLayout.width).toBe(true, msg + '| fits in x');
+                expect(y + h <= fullLayout.height).toBe(true, msg + '| fits in y');
+            };
+        }
+
+        Plotly.plot(gd, fig)
+        .then(_assert('base', [667.72, 60], [120, 83]))
+        .then(function() { return Plotly.relayout(gd, 'legend.title.side', 'left'); })
+        .then(_assert('after relayout to *left*', [607.54, 60], [180, 67]))
+        .then(function() { return Plotly.relayout(gd, 'legend.title.side', 'top'); })
+        .then(_assert('after relayout to *top*', [667.72, 60], [120, 83]))
+        .catch(failTest)
+        .then(done);
+    });
+
+    it('should be able to clear legend title using react', function(done) {
+        var data = [{
+            type: 'scatter',
+            x: [0, 1],
+            y: [1, 0]
+        }];
+
+        Plotly.newPlot(gd, {
+            data: data,
+            layout: {
+                showlegend: true,
+                legend: {
+                    title: {
+                        text: 'legend<br>title'
+                    }
+                }
+            }
+        })
+        .then(function() {
+            expect(d3.selectAll('.legendtitletext')[0].length).toBe(1);
+        })
+        .then(function() {
+            Plotly.react(gd, {
+                data: data,
+                layout: {
+                    showlegend: true
+                }
+            });
+        })
+        .then(function() {
+            expect(d3.selectAll('.legendtitletext')[0].length).toBe(0);
+        })
+        .catch(failTest)
+        .then(done);
     });
 });
 
@@ -788,7 +909,7 @@ describe('legend restyle update', function() {
                 expect(node.attr('height')).toEqual('19');
 
                 var w = +node.attr('width');
-                expect(Math.abs(w - 160)).toBeLessThan(10);
+                expect(w).toBeWithin(113, 10);
             });
         }
 
@@ -1431,6 +1552,53 @@ describe('legend interaction', function() {
                     .then(assertVisible([false, 'legendonly', true, 'legendonly', 'legendonly', 'legendonly', 'legendonly', 'legendonly']))
                     .then(click(1, 2))
                     .then(assertVisible([false, true, true, true, true, true, true, true]))
+                    .catch(failTest).then(done);
+            });
+        });
+
+        describe('legend visibility with *showlegend:false* traces', function() {
+            beforeEach(function(done) {
+                Plotly.plot(gd, [
+                    {y: [1, 2, 3]},
+                    {y: [2, 3, 1]},
+                    {type: 'heatmap', z: [[1, 2], [3, 4]], showscale: false}
+                ])
+                .then(done);
+            });
+
+            it('isolate trace in legend, ignore trace that is not in legend', function(done) {
+                Promise.resolve()
+                    .then(click(0, 2))
+                    .then(assertVisible([true, 'legendonly', true]))
+                    .then(click(0, 2))
+                    .then(assertVisible([true, true, true]))
+                    .catch(failTest).then(done);
+            });
+
+            it('isolate trace in legend, ignore trace that is not in legend (2)', function(done) {
+                Promise.resolve()
+                    .then(click(1, 2))
+                    .then(assertVisible(['legendonly', true, true]))
+                    .then(click(1, 2))
+                    .then(assertVisible([true, true, true]))
+                    .catch(failTest).then(done);
+            });
+
+            it('isolate trace in legend AND trace in associated legendgroup', function(done) {
+                Plotly.restyle(gd, 'legendgroup', ['group', '', 'group'])
+                    .then(click(0, 2))
+                    .then(assertVisible([true, 'legendonly', true]))
+                    .then(click(0, 2))
+                    .then(assertVisible([true, true, true]))
+                    .catch(failTest).then(done);
+            });
+
+            it('isolate trace in legend, hide trace not in legend that has set legendgroup', function(done) {
+                Plotly.restyle(gd, 'legendgroup', ['group', '', 'group'])
+                    .then(click(1, 2))
+                    .then(assertVisible(['legendonly', true, 'legendonly']))
+                    .then(click(1, 2))
+                    .then(assertVisible([true, true, true]))
                     .catch(failTest).then(done);
             });
         });

@@ -514,7 +514,7 @@ describe('annotations log/linear axis changes', function() {
         // we don't try to figure out the position on a new axis / canvas
         // automatically when you change xref / yref, we leave it to the caller.
         // previously this logic was part of plotly.js... But it's really only
-        // the plot.ly workspace that wants this and can assign an unambiguous
+        // the Chart Studio Cloud workspace that wants this and can assign an unambiguous
         // meaning to it, so we'll move the logic there, where there are far
         // fewer edge cases to consider because xref never gets edited along
         // with anything else in one `relayout` call.
@@ -1586,10 +1586,10 @@ describe('annotation effects', function() {
 
     it('makes the whole text box a link if the link is the whole text', function(done) {
         makePlot([
-            {x: 20, y: 20, text: '<a href="https://plot.ly">Plot</a>', showarrow: false},
-            {x: 50, y: 50, text: '<a href="https://plot.ly">or</a> not', showarrow: false},
-            {x: 80, y: 80, text: '<a href="https://plot.ly">arrow</a>'},
-            {x: 20, y: 80, text: 'nor <a href="https://plot.ly">this</a>'}
+            {x: 20, y: 20, text: '<a href="https://plotly.com">Plot</a>', showarrow: false},
+            {x: 50, y: 50, text: '<a href="https://plotly.com">or</a> not', showarrow: false},
+            {x: 80, y: 80, text: '<a href="https://plotly.com">arrow</a>'},
+            {x: 20, y: 80, text: 'nor <a href="https://plotly.com">this</a>'}
         ])
         .then(function() {
             function checkBoxLink(index, isLink) {
@@ -1605,7 +1605,7 @@ describe('annotation effects', function() {
 
             function checkLink(link) {
                 expect(link.node().style.cursor).toBe('pointer');
-                expect(link.attr('xlink:href')).toBe('https://plot.ly');
+                expect(link.attr('xlink:href')).toBe('https://plotly.com');
                 expect(link.attr('xlink:show')).toBe('new');
             }
 
@@ -1613,6 +1613,56 @@ describe('annotation effects', function() {
             checkBoxLink(1, false);
             checkBoxLink(2, true);
             checkBoxLink(3, false);
+        })
+        .catch(failTest)
+        .then(done);
+    });
+
+    it('should remove annotations if offscreen during axis drag', function(done) {
+        gd = createGraphDiv();
+
+        function _assert(msg, exp) {
+            return function() {
+                expect(gd._dragging).toBe(exp.dragging, 'is during drag| ' + msg);
+                expect(Boolean(textDrag())).toBe(exp.onScreen, 'is annotation on screen| ' + msg);
+            };
+        }
+
+        Plotly.plot(gd, [{
+            x: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            y: [0, 4, 5, 1, 2, 2, 3, 4, 2],
+        }], {
+            dragmode: 'pan',
+            width: 500, height: 500,
+            annotations: [{
+                x: 2, y: 5,
+                xref: 'x', yref: 'y',
+                text: 'Annotation Text',
+                arrowhead: 7,
+                ax: 0, ay: -40
+            }]
+        })
+        .then(_assert('base', {
+            dragging: undefined,
+            onScreen: true
+        }))
+        .then(function() {
+            var fns = drag.makeFns({pos0: [250, 250], posN: [500, 250]});
+            return fns.start()
+                .then(_assert('during drag offscreen', {
+                    dragging: true,
+                    onScreen: false
+                }))
+                .then(fns.end);
+        })
+        .then(function() {
+            var fns = drag.makeFns({pos0: [250, 250], posN: [0, 250]});
+            return fns.start()
+                .then(_assert('during drag back onscreen', {
+                    dragging: true,
+                    onScreen: true
+                }))
+                .then(fns.end);
         })
         .catch(failTest)
         .then(done);

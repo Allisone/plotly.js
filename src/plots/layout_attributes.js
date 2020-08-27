@@ -1,5 +1,5 @@
 /**
-* Copyright 2012-2019, Plotly, Inc.
+* Copyright 2012-2020, Plotly, Inc.
 * All rights reserved.
 *
 * This source code is licensed under the MIT license found in the
@@ -11,6 +11,7 @@
 var fontAttrs = require('./font_attributes');
 var animationAttrs = require('./animation_attributes');
 var colorAttrs = require('../components/color/attributes');
+var drawNewShapeAttrs = require('../components/shapes/draw_newshape/attributes');
 var padAttrs = require('./pad_attributes');
 var extendFlat = require('../lib/extend').extendFlat;
 
@@ -140,6 +141,36 @@ module.exports = {
         }),
         editType: 'layoutstyle'
     },
+    uniformtext: {
+        mode: {
+            valType: 'enumerated',
+            values: [false, 'hide', 'show'],
+            dflt: false,
+            role: 'info',
+            editType: 'plot',
+            description: [
+                'Determines how the font size for various text',
+                'elements are uniformed between each trace type.',
+                'If the computed text sizes were smaller than',
+                'the minimum size defined by `uniformtext.minsize`',
+                'using *hide* option hides the text; and',
+                'using *show* option shows the text without further downscaling.',
+                'Please note that if the size defined by `minsize` is greater than',
+                'the font size defined by trace, then the `minsize` is used.'
+            ].join(' ')
+        },
+        minsize: {
+            valType: 'number',
+            min: 0,
+            dflt: 0,
+            role: 'info',
+            editType: 'plot',
+            description: [
+                'Sets the minimum text size between traces of the same type.'
+            ].join(' ')
+        },
+        editType: 'plot'
+    },
     autosize: {
         valType: 'boolean',
         role: 'info',
@@ -225,7 +256,12 @@ module.exports = {
             valType: 'boolean',
             role: 'info',
             dflt: true,
-            editType: 'plot'
+            editType: 'plot',
+            description: [
+                'Turns on/off margin expansion computations.',
+                'Legends, colorbars, updatemenus, sliders, axis rangeselector and rangeslider',
+                'are allowed to push the margins by defaults.'
+            ].join(' ')
         },
         editType: 'plot'
     },
@@ -234,7 +270,7 @@ module.exports = {
         role: 'style',
         dflt: colorAttrs.background,
         editType: 'plot',
-        description: 'Sets the color of paper where the graph is drawn.'
+        description: 'Sets the background color of the paper where the graph is drawn.'
     },
     plot_bgcolor: {
         // defined here, but set in cartesian.supplyLayoutDefaults
@@ -244,7 +280,7 @@ module.exports = {
         dflt: colorAttrs.background,
         editType: 'layoutstyle',
         description: [
-            'Sets the color of plotting area in-between x and y axes.'
+            'Sets the background color of the plotting area in-between x and y axes.'
         ].join(' ')
     },
     separators: {
@@ -267,7 +303,7 @@ module.exports = {
             'Determines whether or not a text link citing the data source is',
             'placed at the bottom-right cored of the figure.',
             'Has only an effect only on graphs that have been generated via',
-            'forked graphs from the plotly service (at https://plot.ly or on-premise).'
+            'forked graphs from the Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise).'
         ].join(' ')
     },
     showlegend: {
@@ -409,6 +445,9 @@ module.exports = {
         editType: 'modebar'
     },
 
+    newshape: drawNewShapeAttrs.newshape,
+    activeshape: drawNewShapeAttrs.activeshape,
+
     meta: {
         valType: 'any',
         arrayOk: true,
@@ -417,7 +456,7 @@ module.exports = {
         description: [
             'Assigns extra meta information that can be used in various `text` attributes.',
             'Attributes such as the graph, axis and colorbar `title.text`, annotation `text`',
-            '`trace.name` in legend items, `rangeselector`, `updatemenues` and `sliders` `label` text',
+            '`trace.name` in legend items, `rangeselector`, `updatemenus` and `sliders` `label` text',
             'all support `meta`. One can access `meta` fields using template strings:',
             '`%{meta[i]}` where `i` is the index of the `meta`',
             'item in question.',

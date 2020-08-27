@@ -1,5 +1,5 @@
 /**
-* Copyright 2012-2019, Plotly, Inc.
+* Copyright 2012-2020, Plotly, Inc.
 * All rights reserved.
 *
 * This source code is licensed under the MIT license found in the
@@ -19,6 +19,10 @@ var Drawing = require('../../components/drawing');
 var makeBubbleSizeFn = require('../scatter/make_bubble_size_func');
 var subTypes = require('../scatter/subtypes');
 var convertTextOpts = require('../../plots/mapbox/convert_text_opts');
+var appendArrayPointValue = require('../../components/fx/helpers').appendArrayPointValue;
+
+var NEWLINES = require('../../lib/svg_text_utils').NEWLINES;
+var BR_TAG_ALL = require('../../lib/svg_text_utils').BR_TAG_ALL;
 
 module.exports = function convert(gd, calcTrace) {
     var trace = calcTrace[0].trace;
@@ -99,6 +103,19 @@ module.exports = function convert(gd, calcTrace) {
             Lib.extendFlat(symbol.layout, {
                 'icon-size': trace.marker.size / 10
             });
+
+            if('angle' in trace.marker && trace.marker.angle !== 'auto') {
+                Lib.extendFlat(symbol.layout, {
+                // unfortunately cant use {angle} do to this issue:
+                // https://github.com/mapbox/mapbox-gl-js/issues/873
+                    'icon-rotate': {
+                        type: 'identity', property: 'angle'
+                    },
+                    'icon-rotation-alignment': 'map'
+                });
+            }
+
+            symbol.layout['icon-allow-overlap'] = trace.marker.allowoverlap;
 
             Lib.extendFlat(symbol.paint, {
                 'icon-opacity': trace.opacity * trace.marker.opacity,
@@ -230,19 +247,25 @@ function makeCircleOpts(calcTrace) {
 }
 
 function makeSymbolGeoJSON(calcTrace, gd) {
+    var fullLayout = gd._fullLayout;
     var trace = calcTrace[0].trace;
 
     var marker = trace.marker || {};
     var symbol = marker.symbol;
-    var text = trace.text;
+    var angle = marker.angle;
 
     var fillSymbol = (symbol !== 'circle') ?
         getFillFunc(symbol) :
         blankFillFunc;
 
-    var fillText = subTypes.hasText(trace) ?
-        getFillFunc(text) :
+    var fillAngle = (angle !== 'auto') ?
+        getFillFunc(angle, true) :
         blankFillFunc;
+
+    var fillText = subTypes.hasText(trace) ?
+        getFillFunc(trace.text) :
+        blankFillFunc;
+
 
     var features = [];
 
@@ -251,14 +274,22 @@ function makeSymbolGeoJSON(calcTrace, gd) {
 
         if(isBADNUM(calcPt.lonlat)) continue;
 
-        var txt = trace.texttemplate;
-        if(txt) {
-            var txti = Array.isArray(txt) ? (txt[i] || '') : txt;
-            calcPt.text = calcPt.tx;
-            calcPt.lon = calcPt.lonlat[0];
-            calcPt.lat = calcPt.lonlat[1];
-            calcPt.customdata = calcPt.data;
-            calcPt.txt = Lib.texttemplateString(txti, {}, gd._fullLayout._d3locale, calcPt, trace._meta || {});
+        var texttemplate = trace.texttemplate;
+        var text;
+
+        if(texttemplate) {
+            var tt = Array.isArray(texttemplate) ? (texttemplate[i] || '') : texttemplate;
+            var labels = trace._module.formatLabels(calcPt, trace, fullLayout);
+            var pointValues = {};
+            appendArrayPointValue(pointValues, trace, calcPt.i);
+            var meta = trace._meta || {};
+            text = Lib.texttemplateString(tt, labels, fullLayout._d3locale, pointValues, calcPt, meta);
+        } else {
+            text = fillText(i);
+        }
+
+        if(text) {
+            text = text.replace(NEWLINES, '').replace(BR_TAG_ALL, '\n');
         }
 
         features.push({
@@ -268,8 +299,9 @@ function makeSymbolGeoJSON(calcTrace, gd) {
                 coordinates: calcPt.lonlat
             },
             properties: {
-                symbol: fillSymbol(calcPt.mx),
-                text: txt ? calcPt.txt : fillText(calcPt.tx)
+                symbol: fillSymbol(i),
+                angle: fillAngle(i),
+                text: text
             }
         });
     }
@@ -280,9 +312,12 @@ function makeSymbolGeoJSON(calcTrace, gd) {
     };
 }
 
-function getFillFunc(attr) {
+function getFillFunc(attr, numeric) {
     if(Lib.isArrayOrTypedArray(attr)) {
-        return function(v) { return v; };
+        if(numeric) {
+            return function(i) { return isNumeric(attr[i]) ? +attr[i] : 0; };
+        }
+        return function(i) { return attr[i]; };
     } else if(attr) {
         return function() { return attr; };
     } else {
